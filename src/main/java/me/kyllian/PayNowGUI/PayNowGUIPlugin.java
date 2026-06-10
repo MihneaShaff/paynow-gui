@@ -8,6 +8,7 @@ import me.kyllian.PayNowGUI.hooks.apollo.ApolloHook;
 import me.kyllian.PayNowGUI.hooks.apollo.IApolloHook;
 import me.kyllian.PayNowGUI.hooks.apollo.NoopApolloHook;
 import me.kyllian.PayNowGUI.hooks.npc.CitizensNpcHook;
+import me.kyllian.PayNowGUI.hooks.npc.FancyNpcsHook;
 import me.kyllian.PayNowGUI.hooks.npc.INpcHook;
 import me.kyllian.PayNowGUI.hooks.npc.NoopNpcHook;
 import me.kyllian.PayNowGUI.listeners.PlayerLoginListener;
@@ -63,14 +64,38 @@ public class PayNowGUIPlugin extends JavaPlugin {
     }
 
     public void initNpcHook() {
-        if (getServer().getPluginManager().getPlugin("Citizens") != null && getConfig().getBoolean("recent_donator_npc.enabled")) {
+        if (!hasEnabledDonationNpc()) {
+            Bukkit.getLogger().info("[paynow-gui] Donation NPCs disabled!");
+            npcHook = new NoopNpcHook();
+        } else if (shouldUseFancyNpcs()) {
+            Bukkit.getLogger().info("[paynow-gui] Enabling FancyNpcs NPC hook!");
+            npcHook = new FancyNpcsHook();
+        } else if (shouldUseCitizens()) {
             Bukkit.getLogger().info("[paynow-gui] Enabling Citizens NPC hook!");
             npcHook = new CitizensNpcHook();
         } else {
-            Bukkit.getLogger().info("[paynow-gui] Citizens not detected or recent_donator_npc disabled!");
+            Bukkit.getLogger().info("[paynow-gui] No supported NPC plugin detected!");
             npcHook = new NoopNpcHook();
         }
         recentDonatorHandler = new RecentDonatorHandler(this, npcHook);
+    }
+
+    private boolean hasEnabledDonationNpc() {
+        return getConfig().getBoolean("recent_donator_npc.enabled")
+                || getConfig().getBoolean("top_donator_all_time_npc.enabled")
+                || getConfig().getBoolean("top_donator_month_npc.enabled");
+    }
+
+    private boolean shouldUseFancyNpcs() {
+        String provider = getConfig().getString("npc_hook", "auto");
+        return getServer().getPluginManager().getPlugin("FancyNpcs") != null
+                && (provider.equalsIgnoreCase("auto") || provider.equalsIgnoreCase("fancynpcs"));
+    }
+
+    private boolean shouldUseCitizens() {
+        String provider = getConfig().getString("npc_hook", "auto");
+        return getServer().getPluginManager().getPlugin("Citizens") != null
+                && (provider.equalsIgnoreCase("auto") || provider.equalsIgnoreCase("citizens"));
     }
 
     private void initMetrics() {

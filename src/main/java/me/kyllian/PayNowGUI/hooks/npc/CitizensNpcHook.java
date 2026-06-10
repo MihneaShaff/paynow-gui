@@ -10,8 +10,15 @@ import java.util.List;
 public class CitizensNpcHook implements INpcHook {
 
     @Override
-    public void updateNpc(int npcId, String skinName, List<String> hologramLines) {
-        NPC npc = CitizensAPI.getNPCRegistry().getById(npcId);
+    public void updateNpc(String npcId, String skinName, List<String> hologramLines) {
+        int citizensNpcId;
+        try {
+            citizensNpcId = Integer.parseInt(npcId);
+        } catch (NumberFormatException ignored) {
+            return;
+        }
+
+        NPC npc = CitizensAPI.getNPCRegistry().getById(citizensNpcId);
         if (npc == null) return;
 
         SkinTrait skinTrait = npc.getOrAddTrait(SkinTrait.class);

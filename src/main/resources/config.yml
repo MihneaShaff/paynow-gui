@@ -1,6 +1,8 @@
 debug: false # Turn to 'true' when asked for debugging information
 store_identifier: 411486491630370816
 apollo_hook: true # Set to true to enable Lunar Client IFrame checkout support
+npc_hook: auto # auto, fancynpcs, citizens
+donation_npc_update_every: 60 # Seconds
 
 cancel_url: "https://kyllian.nl/discord"
 return_url: "https://kyllian.nl/discord" # After successful purchase, the user will be redirected here
@@ -13,7 +15,23 @@ recent_donator_npc:
     &e&l%name% &7(&a&l%total%&7)
   package_format: "&8- &7%name% &d&l%amount%"
   update_every: 60 # Seconds
-  npc_id: 99 # ID of the NPC
+  npc_id: 99 # Citizens ID or FancyNpcs name/id
+
+top_donator_all_time_npc:
+  enabled: false
+  hologram: |-
+    &d&lTOP DONATOR
+    &7All Time
+    &e&l%name% &7(&a&l%total%&7)
+  npc_id: top-donator-all-time # Citizens ID or FancyNpcs name/id
+
+top_donator_month_npc:
+  enabled: false
+  hologram: |-
+    &d&lTOP DONATOR
+    &7This Month
+    &e&l%name% &7(&a&l%total%&7)
+  npc_id: top-donator-this-month # Citizens ID or FancyNpcs name/id
 
 tags_gui:
   title: "my.store.net"
