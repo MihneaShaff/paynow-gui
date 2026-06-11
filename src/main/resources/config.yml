@@ -16,6 +16,7 @@ recent_donator_npc:
   package_format: "&8- &7%name% &d&l%amount%"
   update_every: 60 # Seconds
   npc_id: 99 # Citizens ID or FancyNpcs name/id
+  cmi_hologram: "" # Optional CMI hologram name to update
 
 top_donator_all_time_npc:
   enabled: false
@@ -24,6 +25,7 @@ top_donator_all_time_npc:
     &7All Time
     &e&l%name% &7(&a&l%total%&7)
   npc_id: top-donator-all-time # Citizens ID or FancyNpcs name/id
+  cmi_hologram: "" # Optional CMI hologram name to update
 
 top_donator_month_npc:
   enabled: false
@@ -32,6 +34,7 @@ top_donator_month_npc:
     &7This Month
     &e&l%name% &7(&a&l%total%&7)
   npc_id: top-donator-this-month # Citizens ID or FancyNpcs name/id
+  cmi_hologram: "" # Optional CMI hologram name to update
 
 tags_gui:
   title: "my.store.net"

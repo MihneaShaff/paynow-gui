@@ -36,7 +36,13 @@ public class ProductHandler extends YMLFile<PayNowGUIPlugin> {
     public ProductHandler(PayNowGUIPlugin plugin) {
         super(plugin, "products.yml");
 
+        allowAdditionalStorefrontProductFields();
         loadProducts();
+    }
+
+    private void allowAdditionalStorefrontProductFields() {
+        StorefrontProductDto.openapiFields.add("tier_group_id");
+        StorefrontProductDto.openapiFields.add("active_tier_group");
     }
 
     public void loadProducts() {

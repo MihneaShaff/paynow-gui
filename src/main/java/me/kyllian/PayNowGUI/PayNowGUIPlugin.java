@@ -7,6 +7,9 @@ import me.kyllian.PayNowGUI.handlers.RecentDonatorHandler;
 import me.kyllian.PayNowGUI.hooks.apollo.ApolloHook;
 import me.kyllian.PayNowGUI.hooks.apollo.IApolloHook;
 import me.kyllian.PayNowGUI.hooks.apollo.NoopApolloHook;
+import me.kyllian.PayNowGUI.hooks.hologram.CmiHologramHook;
+import me.kyllian.PayNowGUI.hooks.hologram.IHologramHook;
+import me.kyllian.PayNowGUI.hooks.hologram.NoopHologramHook;
 import me.kyllian.PayNowGUI.hooks.npc.CitizensNpcHook;
 import me.kyllian.PayNowGUI.hooks.npc.FancyNpcsHook;
 import me.kyllian.PayNowGUI.hooks.npc.INpcHook;
@@ -25,6 +28,7 @@ public class PayNowGUIPlugin extends JavaPlugin {
 
     private IApolloHook apolloHook;
     private INpcHook npcHook;
+    private IHologramHook hologramHook;
 
     private ProductHandler productHandler;
     private RecentDonatorHandler recentDonatorHandler;
@@ -77,7 +81,15 @@ public class PayNowGUIPlugin extends JavaPlugin {
             Bukkit.getLogger().info("[paynow-gui] No supported NPC plugin detected!");
             npcHook = new NoopNpcHook();
         }
-        recentDonatorHandler = new RecentDonatorHandler(this, npcHook);
+
+        if (getServer().getPluginManager().isPluginEnabled("CMI")) {
+            Bukkit.getLogger().info("[paynow-gui] Enabling CMI hologram hook!");
+            hologramHook = new CmiHologramHook();
+        } else {
+            hologramHook = new NoopHologramHook();
+        }
+
+        recentDonatorHandler = new RecentDonatorHandler(this, npcHook, hologramHook);
     }
 
     private boolean hasEnabledDonationNpc() {
@@ -88,13 +100,13 @@ public class PayNowGUIPlugin extends JavaPlugin {
 
     private boolean shouldUseFancyNpcs() {
         String provider = getConfig().getString("npc_hook", "auto");
-        return getServer().getPluginManager().getPlugin("FancyNpcs") != null
+        return getServer().getPluginManager().isPluginEnabled("FancyNpcs")
                 && (provider.equalsIgnoreCase("auto") || provider.equalsIgnoreCase("fancynpcs"));
     }
 
     private boolean shouldUseCitizens() {
         String provider = getConfig().getString("npc_hook", "auto");
-        return getServer().getPluginManager().getPlugin("Citizens") != null
+        return getServer().getPluginManager().isPluginEnabled("Citizens")
                 && (provider.equalsIgnoreCase("auto") || provider.equalsIgnoreCase("citizens"));
     }
 

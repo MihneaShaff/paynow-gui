@@ -21,8 +21,10 @@ public class CitizensNpcHook implements INpcHook {
         NPC npc = CitizensAPI.getNPCRegistry().getById(citizensNpcId);
         if (npc == null) return;
 
-        SkinTrait skinTrait = npc.getOrAddTrait(SkinTrait.class);
-        skinTrait.setSkinName(skinName);
+        if (skinName != null && !skinName.isBlank()) {
+            SkinTrait skinTrait = npc.getOrAddTrait(SkinTrait.class);
+            skinTrait.setSkinName(skinName);
+        }
 
         HologramTrait hologramTrait = npc.getOrAddTrait(HologramTrait.class);
         hologramTrait.clear();

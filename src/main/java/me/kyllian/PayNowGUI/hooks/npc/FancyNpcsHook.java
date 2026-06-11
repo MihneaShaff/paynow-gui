@@ -19,7 +19,10 @@ public class FancyNpcsHook implements INpcHook {
             if (npc == null) {
                 npc = call(npcManager, "getNpcById", npcId);
             }
-            if (npc == null) return;
+            if (npc == null) {
+                Bukkit.getLogger().warning("[paynow-gui] FancyNpcs NPC not found: " + npcId);
+                return;
+            }
 
             Object npcData = call(npc, "getData");
             if (skinName != null && !skinName.isBlank()) {
@@ -27,7 +30,10 @@ public class FancyNpcsHook implements INpcHook {
             }
             call(npcData, "setDisplayName", String.join("\n", hologramLines));
             call(npc, "updateForAll");
-        } catch (ReflectiveOperationException ignored) {
+            call(npc, "removeForAll");
+            call(npc, "spawnForAll");
+        } catch (ReflectiveOperationException exception) {
+            Bukkit.getLogger().warning("[paynow-gui] Failed to update FancyNpcs NPC " + npcId + ": " + exception.getMessage());
         }
     }
 

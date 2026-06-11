@@ -9,6 +9,7 @@ import gg.paynow.sdk.PayNowClient;
 import gg.paynow.sdk.storefront.api.ModulesApi;
 import gg.paynow.sdk.storefront.model.ModuleDto;
 import me.kyllian.PayNowGUI.PayNowGUIPlugin;
+import me.kyllian.PayNowGUI.hooks.hologram.IHologramHook;
 import me.kyllian.PayNowGUI.hooks.npc.INpcHook;
 import me.kyllian.PayNowGUI.models.RecentOrder;
 import org.bukkit.Bukkit;
@@ -24,12 +25,15 @@ public class RecentDonatorHandler {
 
     private final PayNowGUIPlugin plugin;
     private final INpcHook npcHook;
+    private final IHologramHook hologramHook;
     private final Gson gson = new Gson();
+    private static final TopDonator NO_TOP_DONATOR = new TopDonator("No one", null, "$0.00");
     private int taskId = -1;
 
-    public RecentDonatorHandler(PayNowGUIPlugin plugin, INpcHook npcHook) {
+    public RecentDonatorHandler(PayNowGUIPlugin plugin, INpcHook npcHook, IHologramHook hologramHook) {
         this.plugin = plugin;
         this.npcHook = npcHook;
+        this.hologramHook = hologramHook;
 
         start();
     }
@@ -53,35 +57,59 @@ public class RecentDonatorHandler {
 
             ModulesApi modulesApi = client.getStorefrontApi(ModulesApi.class);
             List<ModuleDto> modules = modulesApi.getPreparedModules(storeId);
+            boolean recentUpdated = false;
+            boolean allTimeUpdated = false;
+            boolean monthUpdated = false;
 
             for (ModuleDto module : modules) {
                 String moduleId = module.getId().toString().toLowerCase(Locale.ROOT);
                 JsonElement moduleData = gson.toJsonTree(module.getData());
 
                 if (moduleId.equals("recent_payments")) {
-                    updateRecentDonatorNpc(moduleData);
+                    recentUpdated = updateRecentDonatorNpc(moduleData);
                     continue;
                 }
 
-                if (moduleId.contains("top") && (moduleId.contains("donator") || moduleId.contains("donor"))) {
-                    updateTopDonatorNpcs(moduleId, moduleData);
+                if (isTopDonatorModule(moduleId)) {
+                    TopDonatorUpdateResult result = updateTopDonatorNpcs(moduleId, moduleData);
+                    allTimeUpdated = allTimeUpdated || result.allTimeUpdated();
+                    monthUpdated = monthUpdated || result.monthUpdated();
                 }
             }
-        } catch (Exception e) {
-            if (plugin.getConfig().getBoolean("debug", false)) {
-                e.printStackTrace();
+
+            if (isNpcEnabled("recent_donator_npc") && !recentUpdated) {
+                updateRecentDonatorFallback();
             }
+            if (isNpcEnabled("top_donator_all_time_npc") && !allTimeUpdated) {
+                updateTopDonatorNpc("top_donator_all_time_npc", NO_TOP_DONATOR);
+            }
+            if (isNpcEnabled("top_donator_month_npc") && !monthUpdated) {
+                updateTopDonatorNpc("top_donator_month_npc", NO_TOP_DONATOR);
+            }
+        } catch (Exception e) {
+            Bukkit.getLogger().warning("[paynow-gui] Failed to update donation NPCs: " + e.getMessage());
+            if (plugin.getConfig().getBoolean("debug", false)) e.printStackTrace();
         }
     }
 
-    private void updateRecentDonatorNpc(JsonElement moduleData) {
-        if (!isNpcEnabled("recent_donator_npc")) return;
+    private boolean isTopDonatorModule(String moduleId) {
+        return moduleId.contains("top")
+                && (moduleId.contains("donator")
+                || moduleId.contains("donor")
+                || moduleId.contains("customer"));
+    }
+
+    private boolean updateRecentDonatorNpc(JsonElement moduleData) {
+        if (!isNpcEnabled("recent_donator_npc")) return false;
 
         List<RecentOrder> orders = gson.fromJson(
                 firstArray(moduleData, "orders", "payments", "recent_payments"),
                 new TypeToken<List<RecentOrder>>() {}.getType()
         );
-        if (orders == null || orders.isEmpty()) return;
+        if (orders == null || orders.isEmpty()) {
+            updateRecentDonatorFallback();
+            return true;
+        }
 
         RecentOrder mostRecent = orders.getFirst();
         String customerName = mostRecent.getCustomer() != null
@@ -89,7 +117,7 @@ public class RecentDonatorHandler {
                 : "Unknown";
 
         ConfigurationSection config = plugin.getConfig().getConfigurationSection("recent_donator_npc");
-        if (config == null) return;
+        if (config == null) return false;
         String packageFormat = config.getString("package_format", "&8- &7%name% &d&l%amount%");
 
         StringBuilder packagesBuilder = new StringBuilder();
@@ -114,22 +142,36 @@ public class RecentDonatorHandler {
                 .replace("%packages%", packagesBuilder.toString())
                 .replace("%name%", customerName)
                 .replace("%total%", total));
+        return true;
     }
 
-    private void updateTopDonatorNpcs(String moduleId, JsonElement moduleData) {
+    private void updateRecentDonatorFallback() {
+        ConfigurationSection config = plugin.getConfig().getConfigurationSection("recent_donator_npc");
+        if (config == null) return;
+
+        updateNpc(config, null, placeholders(config)
+                .replace("%packages%", "&8- &7No purchases yet")
+                .replace("%name%", "No one")
+                .replace("%total%", "$0.00"));
+    }
+
+    private TopDonatorUpdateResult updateTopDonatorNpcs(String moduleId, JsonElement moduleData) {
+        boolean allTimeUpdated = false;
+        boolean monthUpdated = false;
+
         if (isNpcEnabled("top_donator_all_time_npc") && !moduleId.contains("month")) {
             TopDonator topDonator = parseTopDonator(moduleData, true);
-            if (topDonator != null) {
-                updateTopDonatorNpc("top_donator_all_time_npc", topDonator);
-            }
+            updateTopDonatorNpc("top_donator_all_time_npc", topDonator != null ? topDonator : NO_TOP_DONATOR);
+            allTimeUpdated = true;
         }
 
         if (isNpcEnabled("top_donator_month_npc") && !moduleId.contains("all")) {
             TopDonator topDonator = parseTopDonator(moduleData, false);
-            if (topDonator != null) {
-                updateTopDonatorNpc("top_donator_month_npc", topDonator);
-            }
+            updateTopDonatorNpc("top_donator_month_npc", topDonator != null ? topDonator : NO_TOP_DONATOR);
+            monthUpdated = true;
         }
+
+        return new TopDonatorUpdateResult(allTimeUpdated, monthUpdated);
     }
 
     private void updateTopDonatorNpc(String path, TopDonator topDonator) {
@@ -143,12 +185,20 @@ public class RecentDonatorHandler {
         if (config == null) return;
 
         String npcId = config.getString("npc_id", "99");
+        String cmiHologram = config.getString("cmi_hologram", "");
+        boolean useCmiHologram = cmiHologram != null && !cmiHologram.isBlank();
         List<String> hologramLines = new ArrayList<>();
-        for (String hologramLine : hologramText.split("\n")) {
+        for (String hologramLine : hologramText.replace("\\n", "\n").split("\n")) {
             hologramLines.add(colorize(hologramLine));
         }
 
-        Bukkit.getScheduler().runTask(plugin, () -> npcHook.updateNpc(npcId, skinName, hologramLines));
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (useCmiHologram) {
+                hologramHook.updateHologram(cmiHologram, hologramLines);
+            } else {
+                npcHook.updateNpc(npcId, skinName, hologramLines);
+            }
+        });
     }
 
     private String placeholders(ConfigurationSection config) {
@@ -260,4 +310,6 @@ public class RecentDonatorHandler {
     }
 
     private record TopDonator(String name, String skin, String total) {}
+
+    private record TopDonatorUpdateResult(boolean allTimeUpdated, boolean monthUpdated) {}
 }

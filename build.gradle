@@ -59,7 +59,7 @@ bukkit {
     authors = ["Kyllian"]
     description = "Unofficial Spigot plugin for the PayNow API"
 
-    softDepend = [ "Apollo-Bukkit", "Citizens", "FancyNpcs" ]
+    softDepend = [ "Apollo-Bukkit", "Citizens", "FancyNpcs", "CMI" ]
 
     commands {
         buy {
